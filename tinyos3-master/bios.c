@@ -19,6 +19,17 @@
 #include "bios.h"
 
 /*
+
+	This project is a property of vasilis samoladas https://github.com/vsamtuc/tinyos3
+
+	Further changes and upgrades will bee done for the needs of a project by
+	Messaritakis Georgios
+	Tsanas Kyriakos 
+	Paterakis Konstantinos
+
+*/
+
+/*
 	Implementation of bios.h API
 
 
