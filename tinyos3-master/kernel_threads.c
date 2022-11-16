@@ -3,11 +3,16 @@
 #include "kernel_sched.h"
 #include "kernel_proc.h"
 
+
+
 /** 
   @brief Create a new thread in the current process.
   */
 Tid_t sys_CreateThread(Task task, int argl, void* args)
 {
+
+  
+
 	return NOTHREAD;
 }
 
