@@ -5,6 +5,7 @@
 #include "kernel_streams.h"
 
 
+
 /* 
  The process table and related system calls:
  - Exec
@@ -41,9 +42,11 @@ static inline void initialize_PCB(PCB* pcb)
 
   rlnode_init(& pcb->children_list, NULL);
   rlnode_init(& pcb->exited_list, NULL);
+  rlnode_init(& pcb->ptcb_list, NULL);
   rlnode_init(& pcb->children_node, pcb);
   rlnode_init(& pcb->exited_node, pcb);
   pcb->child_exit = COND_INIT;
+  pcb->thread_count = 0;
 }
 
 
@@ -124,6 +127,18 @@ void start_main_thread()
   Exit(exitval);
 }
 
+void start_child_thread()
+{
+
+  int exitval;
+
+  Task call ;
+  int argl = CURPROC->argl;
+  void* args = CURPROC->args;
+
+
+}
+
 
 /*
 	System call to create a new process.
@@ -179,6 +194,7 @@ Pid_t sys_Exec(Task call, int argl, void* args)
    */
   if(call != NULL) {
     newproc->main_thread = spawn_thread(newproc, start_main_thread);
+    //add something new
     wakeup(newproc->main_thread);
   }
 
