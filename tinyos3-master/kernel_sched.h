@@ -101,6 +101,8 @@ typedef struct thread_control_block {
 
 	PCB* owner_pcb; /**< @brief This is null for a free TCB */
 
+  PTCB* ptcb;     /**< @brief Pointer to corresponding ptcb */
+
 	cpu_context_t context; /**< @brief The thread context */
 	Thread_type type; /**< @brief The type of thread */
 	Thread_state state; /**< @brief The state of the thread */
@@ -129,6 +131,36 @@ typedef struct thread_control_block {
 #endif
 
 } TCB;
+
+/**
+  @brief The process thread control block
+
+  An object of this type is associated to a thread.
+  It is used as a bridge between a PCB and a TCB.
+*/
+typedef struct process_thread_control_block{
+
+  TCB* tcb;               /**< @brief Pointer to corresponding TCB*/
+
+  Task task;              /**< @brief The thread's function */
+
+  int argl;         
+  void* args;
+
+  int exitval;            /**< @brief exitval of this thread*/
+
+  int exited;             /**< @brief Boolean value to see if corresponding thread is exited*/
+  
+  int detached;           /**< @brief Boolean value to see if corresponding thread is detached*/
+
+  CondVar exit_cv;        /**< @brief Condition variable for*/  
+
+  int refcount;            /**< @brief We need to know when to release a PTCB*/
+
+  rlnode ptcb_list_node;  /**< @brief Node to use for listing a PCB's PTCB's*/
+
+} PTCB;
+
 
 /** @brief Thread stack size.
 
