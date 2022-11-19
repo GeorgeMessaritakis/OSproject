@@ -94,10 +94,6 @@ Mutex active_threads_spinlock = MUTEX_INIT;
 
 #define THREAD_SIZE (THREAD_TCB_SIZE + THREAD_STACK_SIZE)
 
-#define Process_TCB_SIZE \
-	(((sizeof(PTCB) + SYSTEM_PAGE_SIZE - 1) / SYSTEM_PAGE_SIZE) * SYSTEM_PAGE_SIZE)
-
-#define PTCB_SIZE (Process_TCB_SIZE + THREAD_STACK_SIZE)
 
 //#define MMAPPED_THREAD_MEM
 #ifdef MMAPPED_THREAD_MEM
@@ -137,9 +133,9 @@ void* allocate_thread(size_t size)
 PTCB* allocate_ptcb()
 {
 
-	PTCB* ptcb = (PTCB*)xmalloc(PTCB_SIZE);
-	return ptcb;
+	PTCB* ptcb = (PTCB*)xmalloc(sizeof(PTCB));
 
+	return ptcb;
 }
 
 void initialize_ptcb(PTCB* ptcb,TCB* tcb,Task task, int argl , void* args)

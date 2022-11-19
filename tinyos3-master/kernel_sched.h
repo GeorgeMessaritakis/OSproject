@@ -30,6 +30,20 @@
  *
  *****************************/
 
+/* 
+	The current core's CCB. This must only be used in a 
+	non-preemtpive context.
+ */
+#define CURCORE (cctx[cpu_core_id])
+
+/* 
+	The current thread. This is a pointer to the TCB of the thread 
+	currently executing on this core.
+
+	This must only be used in non-preemptive context.
+*/
+#define CURTHREAD (CURCORE.current_thread)
+
 /** @brief Thread state. 
 
   A value of this type, together with a @c Thread_phase value, completely
@@ -302,6 +316,11 @@ void run_scheduler(void);
    This function is called during kernel initialization.
  */
 void initialize_scheduler(void);
+
+
+PTCB* allocate_ptcb();
+
+void initialize_ptcb(PTCB*,TCB*,Task,int,void*);
 
 /**
   @brief Quantum (in microseconds) 
