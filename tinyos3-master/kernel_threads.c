@@ -3,6 +3,8 @@
 #include "kernel_sched.h"
 #include "kernel_proc.h"
 #include "kernel_cc.h"
+#include "kernel_streams.h"
+
 
 
 /** 
@@ -23,6 +25,9 @@ Tid_t sys_CreateThread(Task task, int argl, void* args)
 
   ptcb->tcb = tcb;
 
+  tcb->ptcb = ptcb;
+
+
   rlist_push_back(&CURPROC->ptcb_list,&ptcb->ptcb_list_node);
 
   CURPROC->thread_count++;
@@ -39,7 +44,7 @@ Tid_t sys_CreateThread(Task task, int argl, void* args)
   assert(ptcb->refcount==0);
 
 
-  wakeup(tcb);
+  wakeup(ptcb->tcb);
 
 	return (Tid_t)ptcb;
 }
@@ -61,7 +66,7 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
   PTCB* ptcb = (PTCB*)tid;
 
 //check for us
-  assert(ptcb != NULL);
+  //assert(ptcb != NULL);
 
   if(ptcb==NULL)
     return -1;
@@ -85,9 +90,14 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
 
   ptcb->refcount++;
 
-  kernel_wait(&ptcb->exit_cv,SCHED_USER);
+  while(!(ptcb->exited || ptcb->detached))
+  {
+      kernel_wait(&ptcb->exit_cv, SCHED_USER);
+  }
 
   ptcb->refcount--;
+
+
 
   if(exitval != NULL)
   {
@@ -123,6 +133,7 @@ int sys_ThreadDetach(Tid_t tid)
 
   ptcb->detached = 1;
 
+
   kernel_broadcast(&ptcb->exit_cv);
 
 
@@ -142,6 +153,8 @@ void sys_ThreadExit(int exitval)
     PTCB* ptcb = cur_thread()->ptcb;
     ptcb->exited = 1;
     ptcb->exitval = exitval;
+
+
 
 
 
@@ -203,4 +216,3 @@ void sys_ThreadExit(int exitval)
     /* Bye-bye cruel world */
     kernel_sleep(EXITED, SCHED_USER);
 }
-

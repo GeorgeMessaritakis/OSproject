@@ -156,7 +156,7 @@ void initialize_ptcb(PTCB* ptcb,TCB* tcb,Task task, int argl , void* args)
 
 	ptcb->exit_cv = COND_INIT;
 
-	rlnode_init(&ptcb->ptcb_list_node,NULL);
+	rlnode_init(&ptcb->ptcb_list_node,ptcb);
 
 }
 

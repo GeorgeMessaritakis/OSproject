@@ -148,14 +148,14 @@ void start_child_thread()
 
   int exitval;
 
-  Task call  = CURTHREAD->ptcb->task;
-  int argl = CURTHREAD->ptcb->argl;
-  void* args = CURTHREAD->ptcb->args;
+  Task call  = cur_thread()->ptcb->task;
+  int argl = cur_thread()->ptcb->argl;
+  void* args = cur_thread()->ptcb->args;
 
   exitval = call(argl,args);
 
   //Pthread_exit
-  sys_ThreadExit(exitval);
+  ThreadExit(exitval);
 
 }
 
@@ -216,10 +216,16 @@ Pid_t sys_Exec(Task call, int argl, void* args)
    */
   if(call != NULL) {
     newproc->main_thread = spawn_thread(newproc, start_main_thread);
+
     ptcb = allocate_ptcb();
     initialize_ptcb(ptcb,newproc->main_thread,call,argl,args);
+
     newproc->main_thread->ptcb = ptcb;
+    
     rlist_push_back(&newproc->ptcb_list,&ptcb->ptcb_list_node);
+
+    newproc->thread_count++;
+
 
     wakeup(newproc->main_thread);
   }
