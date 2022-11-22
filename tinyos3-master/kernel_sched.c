@@ -496,11 +496,14 @@ void yield(enum SCHED_CAUSE cause)
 
 	if(yields == MAX_YIELDS){
 		for(int i = PRIORITY_QUEUES-2; i>=0; i--){
-			while(rlist_len(&SCHED[i]) != 0){
-				rlist_push_back(&SCHED[i+1], rlist_pop_front(&SCHED[i])); 
-
+			while(!is_rlist_empty(&SCHED[i])){
+				rlnode* node = rlist_pop_front(&SCHED[i]);
+				node->tcb->priority++;
+				rlist_push_back(&SCHED[i+1], node);
 			}
 		}
+
+		yields = 0;
 	}
 	
 	/* Wake up threads whose sleep timeout has expired */
