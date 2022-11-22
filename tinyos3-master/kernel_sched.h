@@ -36,6 +36,8 @@
  */
 #define PRIORITY_QUEUES 10
 
+#define MAX_YIELDS 1000
+
 /* 
 	The current core's CCB. This must only be used in a 
 	non-preemtpive context.

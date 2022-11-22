@@ -36,6 +36,7 @@ CCB cctx[MAX_CORES];
 */
 #define CURTHREAD (CURCORE.current_thread)
 
+static int yields = 0;
 
 /*
 	This can be used in the preemptive context to
@@ -447,6 +448,7 @@ void sleep_releasing(Thread_state state, Mutex* mx, enum SCHED_CAUSE cause,
 
 void yield(enum SCHED_CAUSE cause)
 {
+
 	/* Reset the timer, so that we are not interrupted by ALARM */
 	TimerDuration remaining = bios_cancel_timer();
 
@@ -456,6 +458,8 @@ void yield(enum SCHED_CAUSE cause)
 	TCB* current = CURTHREAD; /* Make a local copy of current process, for speed */
 
 	Mutex_Lock(&sched_spinlock);
+
+	yields++;
 
 	/* Update CURTHREAD state */
 	if (current->state == RUNNING)
@@ -488,6 +492,15 @@ void yield(enum SCHED_CAUSE cause)
 
 		default:
 
+	}
+
+	if(yields == MAX_YIELDS){
+		for(int i = PRIORITY_QUEUES-2; i>=0; i--){
+			while(rlist_len(&SCHED[i]) != 0){
+				rlist_push_back(&SCHED[i+1], rlist_pop_front(&SCHED[i])); 
+
+			}
+		}
 	}
 	
 	/* Wake up threads whose sleep timeout has expired */
