@@ -224,6 +224,8 @@ Pid_t sys_Exec(Task call, int argl, void* args)
     
     rlist_push_back(&newproc->ptcb_list,&ptcb->ptcb_list_node);
 
+    //assert(rlist_find(&newproc->ptcb_list,&ptcb->ptcb_list_node,NULL) != NULL);
+
     newproc->thread_count++;
 
 
