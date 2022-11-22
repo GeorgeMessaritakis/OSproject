@@ -34,7 +34,7 @@
  * @brief Max yield calls to change priority
  * 
  */
-#define PRIORITY_QUEUES 10
+#define PRIORITY_QUEUES 20
 
 #define MAX_YIELDS 1000
 
