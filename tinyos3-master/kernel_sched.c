@@ -94,6 +94,7 @@ Mutex active_threads_spinlock = MUTEX_INIT;
 
 #define THREAD_SIZE (THREAD_TCB_SIZE + THREAD_STACK_SIZE)
 
+
 //#define MMAPPED_THREAD_MEM
 #ifdef MMAPPED_THREAD_MEM
 
@@ -129,6 +130,35 @@ void* allocate_thread(size_t size)
 #endif
 
 
+PTCB* allocate_ptcb()
+{
+
+	PTCB* ptcb = (PTCB*)xmalloc(sizeof(PTCB));
+
+	return ptcb;
+}
+
+void initialize_ptcb(PTCB* ptcb,TCB* tcb,Task task, int argl , void* args)
+{
+
+	ptcb->tcb = tcb;
+
+	ptcb->task = task;
+
+	ptcb->argl = argl;
+	ptcb->args = args;
+
+
+	ptcb->exited = 0;
+	ptcb->detached = 0;
+
+	ptcb->refcount = 0;
+
+	ptcb->exit_cv = COND_INIT;
+
+	rlnode_init(&ptcb->ptcb_list_node,ptcb);
+
+}
 
 
 /*
@@ -158,6 +188,7 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 	/* Set the owner */
 	tcb->owner_pcb = pcb;
 
+
 	/* Initialize the other attributes */
 	tcb->type = NORMAL_THREAD;
 	tcb->state = INIT;
@@ -170,6 +201,7 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 	tcb->rts = QUANTUM;
 	tcb->last_cause = SCHED_IDLE;
 	tcb->curr_cause = SCHED_IDLE;
+
 
 	/* Compute the stack segment address and size */
 	void* sp = ((void*)tcb) + THREAD_TCB_SIZE;

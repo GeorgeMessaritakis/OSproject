@@ -5,6 +5,7 @@
 #include "kernel_streams.h"
 
 
+
 /* 
  The process table and related system calls:
  - Exec
@@ -14,6 +15,21 @@
  - GetPPid
 
  */
+
+/* 
+	The current core's CCB. This must only be used in a 
+	non-preemtpive context.
+ */
+#define CURCORE (cctx[cpu_core_id])
+
+/* 
+	The current thread. This is a pointer to the TCB of the thread 
+	currently executing on this core.
+
+	This must only be used in non-preemptive context.
+*/
+#define CURTHREAD (CURCORE.current_thread)
+
 
 /* The process table */
 PCB PT[MAX_PROC];
@@ -41,9 +57,11 @@ static inline void initialize_PCB(PCB* pcb)
 
   rlnode_init(& pcb->children_list, NULL);
   rlnode_init(& pcb->exited_list, NULL);
+  rlnode_init(& pcb->ptcb_list, NULL);
   rlnode_init(& pcb->children_node, pcb);
   rlnode_init(& pcb->exited_node, pcb);
   pcb->child_exit = COND_INIT;
+  pcb->thread_count = 0;
 }
 
 
@@ -125,12 +143,31 @@ void start_main_thread()
 }
 
 
+void start_child_thread()
+{
+
+  int exitval;
+
+  Task call  = cur_thread()->ptcb->task;
+  int argl = cur_thread()->ptcb->argl;
+  void* args = cur_thread()->ptcb->args;
+
+  exitval = call(argl,args);
+
+  //Pthread_exit
+  ThreadExit(exitval);
+
+}
+
+
 /*
 	System call to create a new process.
  */
 Pid_t sys_Exec(Task call, int argl, void* args)
 {
   PCB *curproc, *newproc;
+
+  PTCB* ptcb;
   
   /* The new process PCB */
   newproc = acquire_PCB();
@@ -179,6 +216,19 @@ Pid_t sys_Exec(Task call, int argl, void* args)
    */
   if(call != NULL) {
     newproc->main_thread = spawn_thread(newproc, start_main_thread);
+
+    ptcb = allocate_ptcb();
+    initialize_ptcb(ptcb,newproc->main_thread,call,argl,args);
+
+    newproc->main_thread->ptcb = ptcb;
+    
+    rlist_push_back(&newproc->ptcb_list,&ptcb->ptcb_list_node);
+
+    //assert(rlist_find(&newproc->ptcb_list,&ptcb->ptcb_list_node,NULL) != NULL);
+
+    newproc->thread_count++;
+
+
     wakeup(newproc->main_thread);
   }
 
@@ -301,60 +351,11 @@ void sys_Exit(int exitval)
 
     while(sys_WaitChild(NOPROC,NULL)!=NOPROC);
 
-  } else {
+  } 
 
-    /* Reparent any children of the exiting process to the 
-       initial task */
-    PCB* initpcb = get_pcb(1);
-    while(!is_rlist_empty(& curproc->children_list)) {
-      rlnode* child = rlist_pop_front(& curproc->children_list);
-      child->pcb->parent = initpcb;
-      rlist_push_front(& initpcb->children_list, child);
-    }
+    sys_ThreadExit(exitval);
+  
 
-    /* Add exited children to the initial task's exited list 
-       and signal the initial task */
-    if(!is_rlist_empty(& curproc->exited_list)) {
-      rlist_append(& initpcb->exited_list, &curproc->exited_list);
-      kernel_broadcast(& initpcb->child_exit);
-    }
-
-    /* Put me into my parent's exited list */
-    rlist_push_front(& curproc->parent->exited_list, &curproc->exited_node);
-    kernel_broadcast(& curproc->parent->child_exit);
-
-  }
-
-  assert(is_rlist_empty(& curproc->children_list));
-  assert(is_rlist_empty(& curproc->exited_list));
-
-
-  /* 
-    Do all the other cleanup we want here, close files etc. 
-   */
-
-  /* Release the args data */
-  if(curproc->args) {
-    free(curproc->args);
-    curproc->args = NULL;
-  }
-
-  /* Clean up FIDT */
-  for(int i=0;i<MAX_FILEID;i++) {
-    if(curproc->FIDT[i] != NULL) {
-      FCB_decref(curproc->FIDT[i]);
-      curproc->FIDT[i] = NULL;
-    }
-  }
-
-  /* Disconnect my main_thread */
-  curproc->main_thread = NULL;
-
-  /* Now, mark the process as exited. */
-  curproc->pstate = ZOMBIE;
-
-  /* Bye-bye cruel world */
-  kernel_sleep(EXITED, SCHED_USER);
 }
 
 

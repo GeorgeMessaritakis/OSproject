@@ -60,6 +60,10 @@ typedef struct process_control_block {
 
   FCB* FIDT[MAX_FILEID];  /**< @brief The fileid table of the process */
 
+  rlnode ptcb_list;       /**< @brief PTCB list for multithreaded implementation*/
+  int thread_count;       /**< @brief Total number of threads for this process*/
+
+
 } PCB;
 
 
@@ -94,6 +98,9 @@ PCB* get_pcb(Pid_t pid);
   @returns the PID of the process, or NOPROC.
 */
 Pid_t get_pid(PCB* pcb);
+
+void start_child_thread();
+
 
 /** @} */
 
