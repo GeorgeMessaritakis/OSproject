@@ -195,6 +195,7 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 	tcb->phase = CTX_CLEAN;
 	tcb->thread_func = func;
 	tcb->wakeup_time = NO_TIMEOUT;
+	tcb->priority = PRIORITY_QUEUES-1;
 	rlnode_init(&tcb->sched_node, tcb); /* Intrusive list node */
 
 	tcb->its = QUANTUM;
@@ -257,7 +258,7 @@ void release_TCB(TCB* tcb)
   Both of these structures are protected by @c sched_spinlock.
 */
 
-rlnode SCHED; /* The scheduler queue */
+rlnode SCHED[PRIORITY_QUEUES]; /* The scheduler queue */
 rlnode TIMEOUT_LIST; /* The list of threads with a timeout */
 Mutex sched_spinlock = MUTEX_INIT; /* spinlock for scheduler queue */
 
@@ -299,8 +300,10 @@ static void sched_register_timeout(TCB* tcb, TimerDuration timeout)
 */
 static void sched_queue_add(TCB* tcb)
 {
+	assert(tcb->priority>=0 );
+	assert(tcb->priority<PRIORITY_QUEUES);
 	/* Insert at the end of the scheduling list */
-	rlist_push_back(&SCHED, &tcb->sched_node);
+	rlist_push_back(&SCHED[tcb->priority], &tcb->sched_node);
 
 	/* Restart possibly halted cores */
 	cpu_core_restart_one();
@@ -358,10 +361,17 @@ static void sched_wakeup_expired_timeouts()
 */
 static TCB* sched_queue_select(TCB* current)
 {
-	/* Get the head of the SCHED list */
-	rlnode* sel = rlist_pop_front(&SCHED);
+	TCB* next_thread=NULL;
 
-	TCB* next_thread = sel->tcb; /* When the list is empty, this is NULL */
+	rlnode* sel=NULL;
+	for(int i = PRIORITY_QUEUES-1; i >= 0 && next_thread == NULL; i--)
+	{
+		
+			sel = rlist_pop_front(&SCHED[i]);
+			next_thread = sel->tcb;
+		
+	}
+
 
 	if (next_thread == NULL)
 		next_thread = (current->state == READY) ? current : &CURCORE.idle_thread;
@@ -456,6 +466,30 @@ void yield(enum SCHED_CAUSE cause)
 	current->last_cause = current->curr_cause;
 	current->curr_cause = cause;
 
+	switch (current->curr_cause) 
+	{
+
+		case SCHED_QUANTUM:
+			if(current->priority > 0)
+				current->priority--;
+			break;
+		
+		case SCHED_IO:
+			if(current->priority < PRIORITY_QUEUES-1)
+				current->priority++;
+			break;
+
+		case SCHED_MUTEX:
+			if(current->last_cause == SCHED_MUTEX){
+				if(current->priority > 0)
+					current->priority--;
+			}
+			break;
+
+		default:
+
+	}
+	
 	/* Wake up threads whose sleep timeout has expired */
 	sched_wakeup_expired_timeouts();
 
@@ -553,7 +587,9 @@ static void idle_thread()
  */
 void initialize_scheduler()
 {
-	rlnode_init(&SCHED, NULL);
+	for(int i = 0; i < PRIORITY_QUEUES; i++){
+		rlnode_init(&SCHED[i], NULL);
+	}
 	rlnode_init(&TIMEOUT_LIST, NULL);
 }
 

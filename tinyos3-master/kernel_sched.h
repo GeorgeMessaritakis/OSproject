@@ -30,6 +30,12 @@
  *
  *****************************/
 
+/**
+ * @brief Max yield calls to change priority
+ * 
+ */
+#define PRIORITY_QUEUES 10
+
 /* 
 	The current core's CCB. This must only be used in a 
 	non-preemtpive context.
@@ -116,6 +122,8 @@ typedef struct thread_control_block {
 	PCB* owner_pcb; /**< @brief This is null for a free TCB */
 
   PTCB* ptcb;     /**< @brief Pointer to corresponding ptcb */
+
+  int priority; /**< @brief Variable to control the thread's priority */
 
 	cpu_context_t context; /**< @brief The thread context */
 	Thread_type type; /**< @brief The type of thread */
