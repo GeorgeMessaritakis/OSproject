@@ -154,13 +154,16 @@ void sys_ThreadExit(int exitval)
     ptcb->exited = 1;
     ptcb->exitval = exitval;
 
+    //curproc->thread_count--;
 
-
+    //kernel_broadcast(&ptcb->exit_cv);
 
 
     if (curproc->thread_count == 1) {
         /* Reparent any children of the exiting process to the 
         initial task */
+      
+      if(get_pid(curproc)!=1) {
       PCB* initpcb = get_pcb(1);
       while(!is_rlist_empty(& curproc->children_list)) {
         rlnode* child = rlist_pop_front(& curproc->children_list);
@@ -202,12 +205,14 @@ void sys_ThreadExit(int exitval)
         }
       }
 
+
       /* Disconnect my main_thread */
       curproc->main_thread = NULL;
 
       /* Now, mark the process as exited. */
       curproc->pstate = ZOMBIE;
 
+      }
     }
 
     curproc->thread_count--;
