@@ -9,27 +9,40 @@
 
 /** 
   @brief Create a new thread in the current process.
+
+
+  @param task the task this thread will execute
+  @param argl length of args
+  @param args 
+  @return The new ptcb
+
   */
 Tid_t sys_CreateThread(Task task, int argl, void* args)
 {
 
+  /*
+    if there is no task
+    the thread cannot be created
+  */
   if(task == NULL)
     return NOTHREAD;
 
-  PTCB* ptcb = allocate_ptcb();
+  PTCB* ptcb = allocate_ptcb(); //malloc for space allocation
 
-  initialize_ptcb(ptcb,NULL,task,argl, args);
+  initialize_ptcb(ptcb,NULL,task,argl, args); //initialize ptcb
 
-  TCB* tcb = spawn_thread(CURPROC,start_child_thread);
+  TCB* tcb = spawn_thread(CURPROC,start_child_thread); //create the new child thread
+                                                      //run start child thread instead of start main thread
 
-
+  //connect PTCB to TCB and vice versa
   ptcb->tcb = tcb;
-
   tcb->ptcb = ptcb;
 
 
+  //put the new ptcb to pcb's list
   rlist_push_back(&CURPROC->ptcb_list,&ptcb->ptcb_list_node);
 
+  //this process has a new thread,increase the counter
   CURPROC->thread_count++;
 
 
@@ -43,7 +56,7 @@ Tid_t sys_CreateThread(Task task, int argl, void* args)
   assert(ptcb->detached==0);
   assert(ptcb->refcount==0);
 
-
+  //put the new tcb to scheduler's queue
   wakeup(ptcb->tcb);
 
 	return (Tid_t)ptcb;
@@ -63,49 +76,73 @@ Tid_t sys_ThreadSelf()
 int sys_ThreadJoin(Tid_t tid, int* exitval)
 {
   
+  //ptcb of the thread we want to join to
   PTCB* ptcb = (PTCB*)tid;
 
-
+  //if thread is not a thread of the current process then fail
   if(rlist_find(&CURPROC->ptcb_list,ptcb,NULL) == NULL)
     return -1;
 
+  //if tid given is invalid
   if(ptcb==NULL)
     return -1;
 
+  //we should not be able to join a detached thread
   if(ptcb->detached == 1)
     return -1;
 
+  //we cannot join ourselves
   if(tid == sys_ThreadSelf())
     return -1;
 
 
-
+  //the thread we want to join to has one more thread (us) that waits for it
   ptcb->refcount++;
 
+  
   while(!(ptcb->exited || ptcb->detached))
   {
+      /*
+        Sleep as long as the thread we are waiting for 
+        is not exited or detached
+      */
       kernel_wait(&ptcb->exit_cv, SCHED_USER);
   }
 
+  //once we are awake we no longer waiting for the thread,decrease the counter
   ptcb->refcount--;
 
+  /*
+    if the thread we want to join gets 
+    detached while we are asleep, then fail
+    the join procedure
+  */
   if((ptcb-> detached) == 1)
   {
     return -1;
   }
 
 
+  /*
+    If there is an exit value then store it
+  */
   if(exitval != NULL)
   {
     *exitval = ptcb->exitval;
   }
 
+  /*
+    If we are the last thread that waits
+    then free the space and remove the thread from
+    the PCB's ptcb list
+  */
   if(ptcb->refcount == 0)
   {
     rlist_remove(&ptcb->ptcb_list_node);
     free(ptcb);
   }
 
+  //if everything went smoothly
 	return 0;
 }
 
