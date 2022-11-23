@@ -72,6 +72,9 @@ Tid_t sys_ThreadSelf()
 
 /**
   @brief Join the given thread.
+
+  @param Tid The thread we want to join
+  @param exitval the exit value
   */
 int sys_ThreadJoin(Tid_t tid, int* exitval)
 {
@@ -148,25 +151,33 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
 
 /**
   @brief Detach the given thread.
+
+  @param Tid the thread we want to detach
   */
 int sys_ThreadDetach(Tid_t tid)
 {
+  //ptcb of the thread we want to detach
   PTCB* ptcb = (PTCB*)tid;
 
+  //if tid is invalid
   if(ptcb==NULL)
     return -1;
 
-
+  //if thread is not a thread of the current process then fail
   if(rlist_find(&CURPROC->ptcb_list,ptcb,NULL) == NULL)
     return -1;
 
+  //if tid corresponds to an exited thread then fail
   if(ptcb->exited == 1)
       return -1;
 
+  //mark the thread as detached
   ptcb->detached = 1;
 
+  //relief any responsibilities
   ptcb->refcount = 0;
 
+  //wake up all the threads
   kernel_broadcast(&ptcb->exit_cv);
 
 
@@ -178,17 +189,21 @@ int sys_ThreadDetach(Tid_t tid)
   */
 void sys_ThreadExit(int exitval)
 {
+    //cache for efficiency
     PCB *curproc = CURPROC; 
 
     //test
     assert(curproc->thread_count>=1);
 
-    PTCB* ptcb = cur_thread()->ptcb;
-    ptcb->exited = 1;
-    ptcb->exitval = exitval;
+    PTCB* ptcb = cur_thread()->ptcb;    //get ptcb of the current thread
+    ptcb->exited = 1;                  //Mark the current thread as exited
+    ptcb->exitval = exitval;          //Store the exit value of the thread
+                                     //we want to terminate,might need it after its life
 
+    //decrease the total number of threads for this process
     curproc->thread_count--;
 
+    //wake up the threads that wait for me
     kernel_broadcast(&ptcb->exit_cv);
 
 
@@ -196,6 +211,7 @@ void sys_ThreadExit(int exitval)
         /* Reparent any children of the exiting process to the 
         initial task */
       
+      //check if the current process is not the INIT process
       if(get_pid(curproc)!=1) {
         PCB* initpcb = get_pcb(1);
         while(!is_rlist_empty(& curproc->children_list)) {
@@ -248,9 +264,6 @@ void sys_ThreadExit(int exitval)
         }
     }
 
-    //curproc->thread_count--;
-
-    //kernel_broadcast(&ptcb->exit_cv);
     /* Bye-bye cruel world */
     kernel_sleep(EXITED, SCHED_USER);
 }

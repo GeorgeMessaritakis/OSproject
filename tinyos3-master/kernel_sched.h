@@ -31,11 +31,16 @@
  *****************************/
 
 /**
- * @brief Max yield calls to change priority
+ * @brief Number of queues for the scheduler list
  * 
  */
 #define PRIORITY_QUEUES 10
 
+
+/**
+ * @brief Max yield calls to execute boost
+ * 
+ */
 #define MAX_YIELDS 500
 
 /* 
