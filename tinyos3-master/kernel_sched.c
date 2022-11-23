@@ -196,7 +196,7 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 	tcb->phase = CTX_CLEAN;
 	tcb->thread_func = func;
 	tcb->wakeup_time = NO_TIMEOUT;
-	tcb->priority = PRIORITY_QUEUES-1;
+	tcb->priority = (int)((PRIORITY_QUEUES-1)/2);
 	rlnode_init(&tcb->sched_node, tcb); /* Intrusive list node */
 
 	tcb->its = QUANTUM;
@@ -365,12 +365,13 @@ static TCB* sched_queue_select(TCB* current)
 	TCB* next_thread=NULL;
 
 	rlnode* sel=NULL;
-	for(int i = PRIORITY_QUEUES-1; i >= 0 && next_thread == NULL; i--)
+	for(int i = PRIORITY_QUEUES-1; i >= 0; i--)
 	{
 		
 			sel = rlist_pop_front(&SCHED[i]);
 			next_thread = sel->tcb;
-		
+			if (next_thread!=NULL)
+				break;
 	}
 
 
@@ -494,7 +495,8 @@ void yield(enum SCHED_CAUSE cause)
 
 	}
 
-	if(yields == MAX_YIELDS){
+//boosting...
+if(yields == MAX_YIELDS){
 		for(int i = PRIORITY_QUEUES-2; i>=0; i--){
 			while(!is_rlist_empty(&SCHED[i])){
 				rlnode* node = rlist_pop_front(&SCHED[i]);
@@ -505,7 +507,7 @@ void yield(enum SCHED_CAUSE cause)
 
 		yields = 0;
 	}
-	
+
 	/* Wake up threads whose sleep timeout has expired */
 	sched_wakeup_expired_timeouts();
 

@@ -34,9 +34,9 @@
  * @brief Max yield calls to change priority
  * 
  */
-#define PRIORITY_QUEUES 20
+#define PRIORITY_QUEUES 10
 
-#define MAX_YIELDS 1000
+#define MAX_YIELDS 500
 
 /* 
 	The current core's CCB. This must only be used in a 
