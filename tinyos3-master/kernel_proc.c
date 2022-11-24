@@ -13,7 +13,6 @@
  - WaitPid
  - GetPid
  - GetPPid
-
  */
 
 /* 
@@ -236,9 +235,6 @@ Pid_t sys_Exec(Task call, int argl, void* args)
     //add the new ptcb to the ptcb list of the new process
     rlist_push_back(&newproc->ptcb_list,&ptcb->ptcb_list_node);
 
-    //assert(rlist_find(&newproc->ptcb_list,&ptcb->ptcb_list_node,NULL) != NULL);
-
-
     
     /*
       the new process has a new thread,the main thread,
@@ -378,7 +374,6 @@ void sys_Exit(int exitval)
   
 
 }
-
 
 
 Fid_t sys_OpenInfo()
