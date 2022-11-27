@@ -13,7 +13,6 @@
  - WaitPid
  - GetPid
  - GetPPid
-
  */
 
 /* 
@@ -143,20 +142,25 @@ void start_main_thread()
 }
 
 
+/*
+  This function is provided as an argument to spawn,
+  to execute one of the child threads of a process
+*/
 void start_child_thread()
 {
 
+  //exit value of the task
   int exitval;
 
-  Task call  = cur_thread()->ptcb->task;
-  int argl = cur_thread()->ptcb->argl;
-  void* args = cur_thread()->ptcb->args;
+  Task call  = cur_thread()->ptcb->task;  //task for this thread to execute
+  int argl = cur_thread()->ptcb->argl;   //argl
+  void* args = cur_thread()->ptcb->args;//args
 
+  //run the task and return its exit value
   exitval = call(argl,args);
 
-  //Pthread_exit
+  //Terminate the thread 
   ThreadExit(exitval);
-
 }
 
 
@@ -215,20 +219,33 @@ Pid_t sys_Exec(Task call, int argl, void* args)
     the initialization of the PCB.
    */
   if(call != NULL) {
+
+    //spawn the main thread
     newproc->main_thread = spawn_thread(newproc, start_main_thread);
 
+    //xmalloc to allocate space for the ptcb
     ptcb = allocate_ptcb();
+
+    //initialize ptcb's values
     initialize_ptcb(ptcb,newproc->main_thread,call,argl,args);
 
+    //make this ptcb the main threads ptcb
     newproc->main_thread->ptcb = ptcb;
     
+    //add the new ptcb to the ptcb list of the new process
     rlist_push_back(&newproc->ptcb_list,&ptcb->ptcb_list_node);
 
-    //assert(rlist_find(&newproc->ptcb_list,&ptcb->ptcb_list_node,NULL) != NULL);
-
+    
+    /*
+      the new process has a new thread,the main thread,
+      increase the thread count.
+    */
     newproc->thread_count++;
 
-
+    /*
+      initialize the new thread and 
+      then add it to the scheduler queue
+    */
     wakeup(newproc->main_thread);
   }
 
@@ -352,12 +369,11 @@ void sys_Exit(int exitval)
     while(sys_WaitChild(NOPROC,NULL)!=NOPROC);
 
   } 
-
-    sys_ThreadExit(exitval);
+  
+  sys_ThreadExit(exitval);
   
 
 }
-
 
 
 Fid_t sys_OpenInfo()
