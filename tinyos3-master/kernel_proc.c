@@ -243,8 +243,8 @@ Pid_t sys_Exec(Task call, int argl, void* args)
     newproc->thread_count++;
 
     /*
-      initialize the new thread and 
-      then add it to the scheduler queue
+      make the new thread READY and 
+      add it to the sceduler's queue
     */
     wakeup(newproc->main_thread);
   }

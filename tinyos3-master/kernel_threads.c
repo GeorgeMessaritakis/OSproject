@@ -63,7 +63,7 @@ Tid_t sys_CreateThread(Task task, int argl, void* args)
 }
 
 /**
-  @brief Return the Tid of the current thread.
+  @brief Return the Tid of the current thread's ptcb.
  */
 Tid_t sys_ThreadSelf()
 {
@@ -127,7 +127,7 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
 
 
   /*
-    If there is an exit value then store it
+    If we want the exit value then store it
   */
   if(exitval != NULL)
   {
@@ -177,7 +177,7 @@ int sys_ThreadDetach(Tid_t tid)
   //relief any responsibilities
   ptcb->refcount = 0;
 
-  //wake up all the threads
+  //wake up all the threads that are waiting
   kernel_broadcast(&ptcb->exit_cv);
 
 
@@ -206,10 +206,11 @@ void sys_ThreadExit(int exitval)
     //wake up the threads that wait for me
     kernel_broadcast(&ptcb->exit_cv);
 
-
+    //if we are the main thread
     if (curproc->thread_count == 0) {
-        /* Reparent any children of the exiting process to the 
-        initial task */
+        
+      /* Reparent any children of the exiting process to the 
+      initial task */
       
       //check if the current process is not the INIT process
       if(get_pid(curproc)!=1) {

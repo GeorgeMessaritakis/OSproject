@@ -159,7 +159,7 @@ void initialize_ptcb(PTCB* ptcb,TCB* tcb,Task task, int argl , void* args)
 	ptcb->exit_cv = COND_INIT; //initialize the condition variable
 
 	rlnode_init(&ptcb->ptcb_list_node,ptcb); //initialize node that will be added to
-											//tcb's process ptcb list
+																					 //tcb's process ptcb list
 
 }
 
@@ -265,7 +265,7 @@ void release_TCB(TCB* tcb)
   Both of these structures are protected by @c sched_spinlock.
 */
 
-rlnode SCHED[PRIORITY_QUEUES]; /* The scheduler queue */
+rlnode SCHED[PRIORITY_QUEUES]; /* The scheduler priority queues */
 rlnode TIMEOUT_LIST; /* The list of threads with a timeout */
 Mutex sched_spinlock = MUTEX_INIT; /* spinlock for scheduler queue */
 
@@ -375,9 +375,10 @@ static TCB* sched_queue_select(TCB* current)
 	rlnode* sel=NULL;
 
 	/*
-		traverse all the priority queues
+		traverse all the priority queues starting
+		from the highest priority queue
 		select the thread of the first
-		empty priority queue
+		non empty priority queue
 	*/
 	for(int i = PRIORITY_QUEUES-1; i >= 0; i--)
 	{
@@ -521,14 +522,14 @@ void yield(enum SCHED_CAUSE cause)
 			break;
 
 		case SCHED_MUTEX:
-			if(current->last_cause == SCHED_MUTEX){//if the last and current yiled cause is cause MUTEX is locked
+			if(current->last_cause == SCHED_MUTEX){//if the last and current yield cause is because MUTEX is locked
 				if(current->priority > 0)//check if inside legal bounds
 					current->priority--;//reduce priority
 			}
 			break;
 
 		default:
-
+			//if none of the above don't change priority
 	}
 
 //boosting...
@@ -538,7 +539,7 @@ if(yields == MAX_YIELDS){
 		/*
 			start from the penultimate list
 			and step by step add the nodes from
-			this to the the list with the first highest
+			this to the the list with the next higher
 			priority
 		*/
 		for(int i = PRIORITY_QUEUES-2; i>=0; i--){
