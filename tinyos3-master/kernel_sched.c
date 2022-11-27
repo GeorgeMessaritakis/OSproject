@@ -653,10 +653,11 @@ static void idle_thread()
  */
 void initialize_scheduler()
 {
+	//initialize all queues
 	for(int i = 0; i < PRIORITY_QUEUES; i++){
-		//initialize all queues
 		rlnode_init(&SCHED[i], NULL);
 	}
+	
 	rlnode_init(&TIMEOUT_LIST, NULL);
 }
 
