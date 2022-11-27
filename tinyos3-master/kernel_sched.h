@@ -332,9 +332,18 @@ void run_scheduler(void);
  */
 void initialize_scheduler(void);
 
+/**
+  @brief Allocate space for a ptcb
 
+   This function allocates space for a ptcb
+ */
 PTCB* allocate_ptcb();
 
+/**
+  @brief Initialize the ptcb
+
+   This function initializes the fields of a ptcb
+ */
 void initialize_ptcb(PTCB*,TCB*,Task,int,void*);
 
 /**
