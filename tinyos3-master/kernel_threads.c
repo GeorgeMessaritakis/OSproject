@@ -255,6 +255,10 @@ void sys_ThreadExit(int exitval)
           }
         }
 
+        /* Deallocate the space of ptcb list in current process*/
+        while(! is_rlist_empty(&curproc->ptcb_list)){
+            free(rlist_pop_front(&curproc->ptcb_list)->ptcb);
+        }
 
         /* Disconnect my main_thread */
         curproc->main_thread = NULL;
