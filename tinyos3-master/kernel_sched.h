@@ -41,7 +41,7 @@
  * @brief Max yield calls to execute boost
  * 
  */
-#define MAX_YIELDS 500
+#define MAX_YIELDS 1000
 
 /* 
 	The current core's CCB. This must only be used in a 
