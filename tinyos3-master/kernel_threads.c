@@ -260,6 +260,8 @@ void sys_ThreadExit(int exitval)
             free(rlist_pop_front(&curproc->ptcb_list)->ptcb);
         }
 
+        assert(is_rlist_empty(&curproc->ptcb_list));
+
         /* Disconnect my main_thread */
         curproc->main_thread = NULL;
 
