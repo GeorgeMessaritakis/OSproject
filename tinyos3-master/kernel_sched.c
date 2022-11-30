@@ -202,7 +202,7 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 		medium priority at first,add it
 		at the middle of the schedulers list matrix
 	*/
-	tcb->priority = (int)((PRIORITY_QUEUES-1)/2);
+	tcb->priority = (int)(PRIORITY_QUEUES-1);
 	rlnode_init(&tcb->sched_node, tcb); /* Intrusive list node */
 
 	tcb->its = QUANTUM;

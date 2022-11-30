@@ -86,10 +86,6 @@ int sys_ThreadJoin(Tid_t tid, int* exitval)
   if(rlist_find(&CURPROC->ptcb_list,ptcb,NULL) == NULL)
     return -1;
 
-  //if tid given is invalid
-  if(ptcb==NULL)
-    return -1;
-
   //we should not be able to join a detached thread
   if(ptcb->detached == 1)
     return -1;
@@ -158,10 +154,6 @@ int sys_ThreadDetach(Tid_t tid)
 {
   //ptcb of the thread we want to detach
   PTCB* ptcb = (PTCB*)tid;
-
-  //if tid is invalid
-  if(ptcb==NULL)
-    return -1;
 
   //if thread is not a thread of the current process then fail
   if(rlist_find(&CURPROC->ptcb_list,ptcb,NULL) == NULL)
@@ -255,6 +247,12 @@ void sys_ThreadExit(int exitval)
           }
         }
 
+        /* Deallocate the space of ptcb list in current process*/
+        while(! is_rlist_empty(&curproc->ptcb_list)){
+            free(rlist_pop_front(&curproc->ptcb_list)->ptcb);
+        }
+
+        assert(is_rlist_empty(&curproc->ptcb_list));
 
         /* Disconnect my main_thread */
         curproc->main_thread = NULL;
