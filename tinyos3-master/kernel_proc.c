@@ -56,11 +56,11 @@ static inline void initialize_PCB(PCB* pcb)
 
   rlnode_init(& pcb->children_list, NULL);
   rlnode_init(& pcb->exited_list, NULL);
-  rlnode_init(& pcb->ptcb_list, NULL);
+  rlnode_init(& pcb->ptcb_list, NULL);/*initially empty list of ptcbs*/
   rlnode_init(& pcb->children_node, pcb);
   rlnode_init(& pcb->exited_node, pcb);
   pcb->child_exit = COND_INIT;
-  pcb->thread_count = 0;
+  pcb->thread_count = 0;/*initially no threads for this process*/
 }
 
 

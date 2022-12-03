@@ -34,7 +34,7 @@
  * @brief Number of queues for the scheduler list
  * 
  */
-#define PRIORITY_QUEUES 500
+#define PRIORITY_QUEUES 50
 
 
 /**
@@ -182,11 +182,11 @@ typedef struct process_thread_control_block{
   
   int detached;           /**< @brief Boolean value to see if corresponding thread is detached*/
 
-  CondVar exit_cv;        /**< @brief Condition variable for*/  
+  CondVar exit_cv;        /**< @brief Condition variable for threads who want to join us*/  
 
-  int refcount;            /**< @brief We need to know when to release a PTCB*/
+  int refcount;            /**< @brief Number of threads who have joined us*/
 
-  rlnode ptcb_list_node;  /**< @brief Node to use for listing a PCB's PTCB's*/
+  rlnode ptcb_list_node;  /**< @brief Node to use for listing to add this PTCB to PCB's list*/
 
 } PTCB;
 
@@ -194,7 +194,7 @@ typedef struct process_thread_control_block{
 /** @brief Thread stack size.
 
   The default thread stack size in TinyOS is 128 kbytes.
- */
+*/
 #define THREAD_STACK_SIZE (128 * 1024)
 
 /************************
