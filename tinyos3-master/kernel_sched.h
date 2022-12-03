@@ -34,7 +34,7 @@
  * @brief Number of queues for the scheduler list
  * 
  */
-#define PRIORITY_QUEUES 10
+#define PRIORITY_QUEUES 500
 
 
 /**
