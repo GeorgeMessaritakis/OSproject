@@ -146,20 +146,19 @@ void initialize_ptcb(PTCB* ptcb,TCB* tcb,Task task, int argl , void* args)
 
 	ptcb->task = task; //task that tcb will execute
 
-	//task's arguments
-	ptcb->argl = argl;
-	ptcb->args = args;
+
+	ptcb->argl = argl;//length of task's arguments
+	ptcb->args = args;//task's arguments
 
 
-	ptcb->exited = 0;	//flag if tcb is exited or no
-	ptcb->detached = 0; //flag if tcb is detached or no
+	ptcb->exited = 0;	//ptcb is not initially exited
+	ptcb->detached = 0; //ptcb's tcb is not initially detached
 
 	ptcb->refcount = 0; //number of threads that wait for us to finish
 
 	ptcb->exit_cv = COND_INIT; //initialize the condition variable
 
-	rlnode_init(&ptcb->ptcb_list_node,ptcb); //initialize node that will be added to
-																					 //tcb's process ptcb list
+	rlnode_init(&ptcb->ptcb_list_node,ptcb); //initialize node that will be added to tcb's process ptcb list
 
 }
 
@@ -199,8 +198,8 @@ TCB* spawn_thread(PCB* pcb, void (*func)())
 	tcb->thread_func = func;
 	tcb->wakeup_time = NO_TIMEOUT;
 	/*
-		medium priority at first,add it
-		at the middle of the schedulers list matrix
+		maximum priority at first,add it
+		at the top of the schedulers list matrix
 	*/
 	tcb->priority = (int)(PRIORITY_QUEUES-1);
 	rlnode_init(&tcb->sched_node, tcb); /* Intrusive list node */
@@ -372,7 +371,7 @@ static TCB* sched_queue_select(TCB* current)
 {
 	TCB* next_thread=NULL;
 
-	rlnode* sel=NULL;
+	rlnode* sel=NULL;//thread that we pop to select next thread
 
 	/*
 		traverse all the priority queues starting

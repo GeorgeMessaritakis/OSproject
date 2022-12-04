@@ -166,13 +166,10 @@ int sys_ThreadDetach(Tid_t tid)
   //mark the thread as detached
   ptcb->detached = 1;
 
-  //relief any responsibilities
-  ptcb->refcount = 0;
-
   //wake up all the threads that are waiting
   kernel_broadcast(&ptcb->exit_cv);
 
-
+  //if everything went smoothly
 	return 0;
 }
 
@@ -207,6 +204,8 @@ void sys_ThreadExit(int exitval)
       //check if the current process is not the INIT process
       if(get_pid(curproc)!=1) {
         PCB* initpcb = get_pcb(1);
+
+        //The init process inherits the children of the current process.
         while(!is_rlist_empty(& curproc->children_list)) {
           rlnode* child = rlist_pop_front(& curproc->children_list);
           child->pcb->parent = initpcb;
@@ -228,6 +227,7 @@ void sys_ThreadExit(int exitval)
         assert(is_rlist_empty(& curproc->children_list));
         assert(is_rlist_empty(& curproc->exited_list));
 
+      } 
 
         /* 
           Do all the other cleanup we want here, close files etc. 
@@ -248,8 +248,11 @@ void sys_ThreadExit(int exitval)
         }
 
         /* Deallocate the space of ptcb list in current process*/
-        while(! is_rlist_empty(&curproc->ptcb_list)){
-            free(rlist_pop_front(&curproc->ptcb_list)->ptcb);
+        while(!is_rlist_empty(&curproc->ptcb_list)){
+            PTCB* popedNode = rlist_pop_front(&curproc->ptcb_list)->ptcb;
+            if(popedNode->refcount == 0) {
+              free(popedNode);
+            }
         }
 
         assert(is_rlist_empty(&curproc->ptcb_list));
@@ -260,7 +263,6 @@ void sys_ThreadExit(int exitval)
         /* Now, mark the process as exited. */
         curproc->pstate = ZOMBIE;
 
-        }
     }
 
     /* Bye-bye cruel world */
