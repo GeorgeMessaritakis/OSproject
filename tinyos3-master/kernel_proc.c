@@ -370,9 +370,9 @@ void sys_Exit(int exitval)
 
   } 
   
+  //It's time to exit the main thread of this process.
   sys_ThreadExit(exitval);
   
-
 }
 
 
