@@ -77,10 +77,7 @@ void initialize_pipe_cb(pipe_cb* pipecb,FCB* reader , FCB* writer)
 {
 
 	pipecb->reader = reader;
-	FCB_incref(pipecb->reader);
-
 	pipecb->writer = writer;
-	FCB_incref(pipecb->writer);
 
 	pipecb->w_position = 0;
 	pipecb->r_position = 0;
@@ -108,7 +105,7 @@ int pipe_write(void *pipecb_t,const char* buf,unsigned int n)
 
 	while(pipecb->elements == PIPE_BUFFER_SIZE  && pipecb->reader != NULL)
 	{
-		kernel_broadcast(&pipecb->has_data);
+		//kernel_broadcast(&pipecb->has_data);
 		kernel_wait(&pipecb->has_space,SCHED_PIPE);
 	}
 
@@ -117,20 +114,17 @@ int pipe_write(void *pipecb_t,const char* buf,unsigned int n)
 		return -1;
 	}
 
-	preempt_off;
 
 	uint count =  0;
 
 
-	while(count < n && pipecb->elements != PIPE_BUFFER_SIZE)
+	while(count < n && pipecb->elements < PIPE_BUFFER_SIZE)
 	{
 
 		pipecb->buffer[pipecb->w_position] = buf[count++];
 		pipecb->w_position = (pipecb->w_position+1)%PIPE_BUFFER_SIZE;
 		pipecb->elements++;
 	}
-
-	preempt_on;
 
 	if(count == 0) return -1;
 	
@@ -156,11 +150,9 @@ int pipe_read(void *pipecb_t,char* buf,unsigned int n)
 
 	while(pipecb->elements == 0 && pipecb->writer !=NULL)
 	{
-		kernel_broadcast(&pipecb->has_space);
+		//kernel_broadcast(&pipecb->has_space);
 		kernel_wait(&pipecb->has_data,SCHED_PIPE);
 	}
-
-	preempt_off;
 
 	uint count =  0;
 
@@ -173,8 +165,6 @@ int pipe_read(void *pipecb_t,char* buf,unsigned int n)
 		pipecb->elements--;
 	}
 
-	preempt_on;
-
 	if(count == 0) return 0;
 	
 	kernel_broadcast(&pipecb->has_space);
@@ -185,6 +175,7 @@ int pipe_read(void *pipecb_t,char* buf,unsigned int n)
 	return count;
 
 }
+
 int pipe_writer_close(void * _pipecb)
 {
 
@@ -195,9 +186,6 @@ int pipe_writer_close(void * _pipecb)
 
 	if(pipecb->writer == NULL)
 		return -1;
-
-
-	FCB_decref(pipecb->writer);
 
 	pipecb->writer = NULL;
 
@@ -220,9 +208,6 @@ int pipe_reader_close(void*_pipecb)
 
 	if(pipecb->reader == NULL)
 		return -1;
-
-
-	FCB_decref(pipecb->reader);
 
 	pipecb->reader = NULL;
 
