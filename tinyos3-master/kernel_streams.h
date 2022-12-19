@@ -128,6 +128,30 @@ void FCB_unreserve(size_t num, Fid_t *fid, FCB** fcb);
 FCB* get_fcb(Fid_t fid);
 
 
+/*******************************************
+ *
+ * Pipes
+ *
+ *******************************************/
+
+#define PIPE_BUFFER_SIZE 4096
+
+typedef struct pipe_control_block
+{
+  FCB* reader;
+  FCB* writer;
+
+  CondVar has_space;
+  CondVar has_data;
+
+  int w_position, r_position;
+  int elements;
+
+  char buffer[PIPE_BUFFER_SIZE];
+} pipe_cb;
+
+
+
 /** @} */
 
 #endif
