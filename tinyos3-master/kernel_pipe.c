@@ -6,17 +6,6 @@
 #include "kernel_sched.h"
 #include "kernel_cc.h"
 
-void initialize_pipe_cb(pipe_cb*,FCB*,FCB*);
-int pipe_write(void *,const char*,unsigned int);
-int pipe_read(void *,char*,unsigned int);
-int pipe_writer_close(void *);
-int pipe_reader_close(void*);
-
-
-/*dummy functions*/
-void* pipe_open(unsigned int);
-int dummy_write(void *,const char*,unsigned int);
-int dummy_read(void *,char*,unsigned int);
 
 
 static file_ops reader_file_ops = {

@@ -150,6 +150,96 @@ typedef struct pipe_control_block
   char buffer[PIPE_BUFFER_SIZE];
 } pipe_cb;
 
+void initialize_pipe_cb(pipe_cb*,FCB*,FCB*);
+int pipe_write(void *,const char*,unsigned int);
+int pipe_read(void *,char*,unsigned int);
+int pipe_writer_close(void *);
+int pipe_reader_close(void*);
+
+/*dummy functions*/
+void* pipe_open(unsigned int);
+int dummy_write(void *,const char*,unsigned int);
+int dummy_read(void *,char*,unsigned int);
+
+
+/*******************************************
+ *
+ * Sockets
+ *
+ *******************************************/
+
+
+typedef struct socket_control_block socket_cb;
+
+typedef enum 
+{
+
+  SOCKET_LISTENER,
+  SOCKET_UNBOUND,
+  SOCKET_PEER
+
+}socket_type;
+
+typedef struct listener
+{
+
+  rlnode queue;
+  CondVar req_available;
+
+}listener_socket;
+
+typedef struct unbound
+{
+
+  rlnode unbound_socket;
+
+}unbound_socket;
+
+typedef struct peer
+{
+
+  socket_cb* peer;
+  pipe_cb* write_pipe;
+  pipe_cb* read_pipe;
+
+}peer_socket;
+
+
+typedef struct socket_control_block
+{
+
+  uint refcount;
+  FCB* fcb;
+  port_t port;
+  socket_type type;
+
+  union{
+
+    listener_socket listener_s;
+    unbound_socket unbound_s;
+    peer_socket peer_s;
+
+  };
+
+}socket_cb;
+
+typedef struct request
+{
+  int admitted;
+  socket_cb* peer;
+  CondVar connected_cv;
+
+  rlnode queue_node;
+
+}connection_request;
+
+int socket_write(void *,const char*,unsigned int);
+int socket_read(void *,char*,unsigned int);
+int socket_close(void *);
+
+/*dummy function*/
+void* socket_open(unsigned int);
+
 
 
 /** @} */

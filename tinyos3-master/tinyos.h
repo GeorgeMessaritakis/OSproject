@@ -3,7 +3,6 @@
 #define __TINYOS_H__
 
 #include <stdint.h>
-
 /**
   @file tinyos.h
   @brief Public kernel API
