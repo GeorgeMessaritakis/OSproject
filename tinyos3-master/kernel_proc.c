@@ -376,6 +376,28 @@ void sys_Exit(int exitval)
 }
 
 
+
+/**********************work in progress**********************/
+static file_ops procinfo_ops = {
+  //.Open = pipe_open,
+  .Read = procinfo_read,
+  //.Write = pipe_write,
+  .Close = procinfo_close
+};
+
+
+int procinfo_read(void * procinfo_cb_t,char* buf,unsigned int n)
+{
+  return -1;
+}
+
+
+int procinfo_close(void * _procinfocb)
+{
+  return -1;
+}
+
+
 Fid_t sys_OpenInfo()
 {
 	return NOFILE;
