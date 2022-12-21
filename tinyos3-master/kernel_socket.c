@@ -1,6 +1,8 @@
 
 #include "tinyos.h"
 #include "kernel_streams.h"
+#include "kernel_cc.h"
+
 
 static socket_cb* PORT_MAP[MAX_PORT];
 
@@ -70,6 +72,9 @@ int sys_Listen(Fid_t sock)
 	PORT_MAP[socket->port] = socket;
 	socket->type = SOCKET_LISTENER;
 
+	
+	rlnode_init(&socket->listener_s.queue,NULL);
+	socket->listener_s.req_available = COND_INIT;
 
 	return 0;
 }
@@ -78,32 +83,36 @@ int sys_Listen(Fid_t sock)
 Fid_t sys_Accept(Fid_t lsock)
 {
 	if(lsock <  0 || lsock >= MAX_FILEID)
-		return -1;
+		return NOFILE;
+
 	
-	FCB* fcb = (FCB*)get_fcb(lsock);
+	FCB* fcb = get_fcb(lsock);
 
 	if(fcb == NULL)
-		return -1;
+		return NOFILE;
+
 
 	socket_cb* socket = (socket_cb*)fcb->streamobj;
 
 	if(socket == NULL)
-		return -1;
+		return NOFILE;
+
 
 
 	if(socket->type != SOCKET_LISTENER)
-		return -1;
-	
+		return NOFILE;
+
 
 	socket->refcount++;
 	while(is_rlist_empty((&socket->listener_s.queue)) && PORT_MAP[socket->port] == socket)
 	{
-		kernel_sleep(socket->listener_s.req_available);
+		kernel_wait(&socket->listener_s.req_available,SCHED_PIPE);
 	}
 
 
 	if(PORT_MAP[socket->port] != socket)
-		return -1;
+		return NOFILE;
+
 	
 	
 	connection_request* req = rlist_pop_front(&socket->listener_s.queue)->request;
@@ -112,7 +121,7 @@ Fid_t sys_Accept(Fid_t lsock)
 	int fid = sys_Socket(socket->port);
 	
 	if(fid == NOPORT)
-		return -1;
+		return NOFILE;
 
 
 	req->admitted = 1;
@@ -132,15 +141,83 @@ Fid_t sys_Accept(Fid_t lsock)
 	pipe_cb* cb2 = (pipe_cb*)xmalloc(sizeof(pipe_cb));
 
 
+	initialize_pipe_cb(cb1,peer_client->fcb,peer_server->fcb);
+	initialize_pipe_cb(cb2,peer_server->fcb,peer_client->fcb);
+
+	peer_server->peer_s.write_pipe = cb1;
+	peer_server->peer_s.read_pipe = cb2;
+
+	peer_client->peer_s.read_pipe = cb1;
+	peer_client->peer_s.write_pipe = cb2;
+	
+
+	kernel_broadcast(&req->connected_cv);
 
 
-	return NOFILE;
+	socket->refcount--;
+
+
+	return fid;
 }
 
 
 int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
-{
-	return -1;
+{	
+
+	if(sock <  0 || sock >= MAX_FILEID)
+		return -1;
+	
+	FCB* fcb = get_fcb(sock);
+
+	if(fcb == NULL)
+		return -1;
+
+	socket_cb* socket = (socket_cb*)fcb->streamobj;
+
+	if(socket == NULL)
+		return -1;
+
+	if(socket->type == SOCKET_LISTENER)
+		return -1;	
+
+
+	if(port<0 || port>=MAX_PORT)
+		return -1;
+
+	if(PORT_MAP[port]->type != SOCKET_LISTENER)
+		return -1;
+
+
+	socket->refcount++;
+
+
+	connection_request* request = (connection_request*)xmalloc(sizeof(connection_request));
+
+	request->admitted = 0;
+	request->peer = socket;
+	request->connected_cv = COND_INIT;
+
+	rlnode_init(&request->queue_node,request);
+
+	rlist_push_back(&PORT_MAP[port]->listener_s.queue,&request->queue_node);
+
+	kernel_broadcast(&PORT_MAP[port]->listener_s.req_available);
+
+	int no_timeout = 1;
+	while(request->admitted == 0 && no_timeout)
+	{
+		no_timeout = kernel_timedwait(&request->connected_cv,SCHED_PIPE,timeout);
+	}
+
+
+	if(no_timeout == 0)
+		return -1;
+
+
+	socket->refcount--;
+
+
+	return 0;
 }
 
 

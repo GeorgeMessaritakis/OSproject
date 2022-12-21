@@ -233,6 +233,7 @@ typedef struct request
 
 }connection_request;
 
+void initialize_socket(socket_cb* ,FCB* , port_t); 
 int socket_write(void *,const char*,unsigned int);
 int socket_read(void *,char*,unsigned int);
 int socket_close(void *);
