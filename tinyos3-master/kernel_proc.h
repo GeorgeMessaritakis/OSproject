@@ -69,12 +69,13 @@ typedef struct process_control_block {
 
 typedef struct process_info_control_block_struct{
 
-procinfo procinfo ;
+procinfo procinfo ;  //process info
 
-PCB* cursor;
+PCB* cursor;        //cursor for the Process Table
 
 }procinfo_cb;
 
+/*functions for process info*/
 int procinfo_read(void *,char*,unsigned int);
 int procinfo_close(void *);
 void* procinfo_open(unsigned int);
