@@ -379,27 +379,148 @@ void sys_Exit(int exitval)
 
 /**********************work in progress**********************/
 static file_ops procinfo_ops = {
-  //.Open = pipe_open,
+  .Open = procinfo_open,
   .Read = procinfo_read,
-  //.Write = pipe_write,
+  .Write = procinfo_write,
   .Close = procinfo_close
 };
 
 
+
+Fid_t sys_OpenInfo()
+{
+
+  int fid;
+	FCB* fcb;
+
+	if(FCB_reserve(1,&fid,&fcb))
+	{
+
+		procinfo_cb* procinfocb = (procinfo_cb*)xmalloc(sizeof(procinfo_cb));
+
+    initialize_procinfo(procinfocb);
+
+		fcb->streamobj = procinfocb;
+		fcb->streamfunc = &procinfo_ops;
+
+		return fid;
+	}
+
+
+	return NOFILE;
+}
+
+
+
 int procinfo_read(void * procinfo_cb_t,char* buf,unsigned int n)
 {
-  return -1;
+
+  procinfo_cb* procinfocb = (procinfo_cb*)procinfo_cb_t;
+
+   PCB* cur = procinfocb->cursor;
+
+  if(cur==NULL)
+    return 0;
+
+
+  int pid = get_pid(cur);
+
+  if(pid == NOPROC)
+    return -1;
+
+  if(buf == NULL)
+    return -1;
+
+  if(n<0)
+    return -1;
+
+  if(procinfocb == NULL)
+    return -1;
+
+  if(get_pid(procinfocb->cursor) == NOPROC)
+    return -1;
+  
+
+  load_procinfo(procinfocb,cur);
+
+
+  memcpy(buf, (char*)&procinfocb->procinfo, sizeof(procinfo));
+
+
+  do
+  {
+    if(pid+1 == MAX_PROC)
+    {
+      procinfocb->cursor = NULL;
+      break;
+    }
+
+    pid++;
+
+    procinfocb->cursor = &PT[pid];
+
+  }while(procinfocb->cursor->pstate == FREE);
+
+
+  return n;
 }
 
 
 int procinfo_close(void * _procinfocb)
 {
+
+  procinfo_cb* procinfocb = (procinfo_cb*)_procinfocb;
+
+  if(procinfocb == NULL)
+    return -1;
+
+  free(procinfocb);
+
+  return 0;
+}
+
+
+void load_procinfo(procinfo_cb* procinfocb , PCB* pcb)
+{
+
+  procinfocb->procinfo.pid = get_pid(pcb);
+  procinfocb->procinfo.ppid = get_pid(pcb->parent);
+  procinfocb->procinfo.alive = pcb->pstate == ALIVE ? 1 : 0;
+  procinfocb->procinfo.thread_count = pcb->thread_count;
+  procinfocb->procinfo.main_task = pcb->main_task;
+  procinfocb->procinfo.argl = pcb->argl;
+  if(pcb->args != NULL)
+  {
+    if(pcb->argl > PROCINFO_MAX_ARGS_SIZE)
+      memcpy(procinfocb->procinfo.args, pcb->args, PROCINFO_MAX_ARGS_SIZE);
+    else
+      memcpy(procinfocb->procinfo.args, pcb->args, pcb->argl);
+  }
+}
+
+
+void initialize_procinfo(procinfo_cb* procinfocb)
+{
+
+   procinfocb->procinfo.pid = 0;
+  procinfocb->procinfo.ppid = -1;
+  procinfocb->procinfo.alive = 0;
+  procinfocb->procinfo.thread_count = 0;
+  procinfocb->procinfo.main_task = NULL;
+  procinfocb->procinfo.argl = 0;
+
+  procinfocb->cursor = &PT[0];
+
+}
+
+
+void* procinfo_open(unsigned int n)
+{
+  return NULL;
+}
+
+
+int procinfo_write(void * procinfo_cb_t,const char* buf,unsigned int n)
+{
   return -1;
 }
-
-
-Fid_t sys_OpenInfo()
-{
-	return NOFILE;
-}
-

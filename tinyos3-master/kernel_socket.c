@@ -120,7 +120,17 @@ Fid_t sys_Accept(Fid_t lsock)
 
 	int fid = sys_Socket(socket->port);
 	
-	if(fid == NOPORT)
+	if(fid == NOFILE)
+	{
+		kernel_broadcast(&(req->connected_cv));
+		socket->refcount--;
+		return NOFILE;
+	}
+
+
+	FCB* fcb2 = get_fcb(fid);
+
+	if(fcb2 == NULL)
 	{
 		kernel_broadcast(&(req->connected_cv));
 		socket->refcount--;
@@ -131,14 +141,6 @@ Fid_t sys_Accept(Fid_t lsock)
 	socket_cb* peer_client = req->peer;
 	peer_client->type = SOCKET_PEER;
 
-	FCB* fcb2 = get_fcb(fid);
-
-	if(fcb2 == NULL)
-	{
-		kernel_broadcast(&(req->connected_cv));
-		socket->refcount--;
-		return NOFILE;
-	}
 	socket_cb* peer_server = (socket_cb*)fcb2->streamobj;
 	peer_server->type = SOCKET_PEER;
 
@@ -329,7 +331,7 @@ int socket_read(void *socketcb_t,char* buf,unsigned int n)
 
 }
 
-//work in progress
+
 int socket_close(void * _socketcb)
 {
 

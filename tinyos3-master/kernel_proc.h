@@ -73,11 +73,16 @@ procinfo procinfo ;
 
 PCB* cursor;
 
-
 }procinfo_cb;
 
 int procinfo_read(void *,char*,unsigned int);
 int procinfo_close(void *);
+void* procinfo_open(unsigned int);
+int procinfo_write(void *,const char*,unsigned int);
+void initialize_procinfo(procinfo_cb* );
+void load_procinfo(procinfo_cb*  , PCB* );
+
+
 
 
 /**
