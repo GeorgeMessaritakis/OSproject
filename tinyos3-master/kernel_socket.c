@@ -101,47 +101,52 @@ int sys_Listen(Fid_t sock)
 
 Fid_t sys_Accept(Fid_t lsock)
 {
+	/* Check if file id is not legal */
 	if(lsock <  0 || lsock >= MAX_FILEID)
 		return NOFILE;
 
 	
 	FCB* fcb = get_fcb(lsock);
 
+	/* Check if fcb is not initialized */
 	if(fcb == NULL)
 		return NOFILE;
 
-
+	/* Get the listener socket */
 	socket_cb* socket = (socket_cb*)fcb->streamobj;
 
+	/* Check if socket is not existed */
 	if(socket == NULL)
 		return NOFILE;
 
-
-
+	/* Check if socket type is listener */
 	if(socket->type != SOCKET_LISTENER)
 		return NOFILE;
 
-
+	/* Increase refcount of the socket that we want to make it listener */
 	socket->refcount++;
+
 	while(is_rlist_empty((&socket->listener_s.queue)) && PORT_MAP[socket->port] == socket)
 	{
+		/* Sleep until listener’s queue is not empty and the port position in PORT_MAP array does not exist to a specific socket */
 		kernel_wait(&socket->listener_s.req_available,SCHED_PIPE);
 	}
 
-
+	/* if I waked up cause of the port position in PORT_MAP array does not exist to a specific socket return no file */
 	if(PORT_MAP[socket->port] != socket)
 		return NOFILE;
 
-	
-	
+	/* Taking the request from listener’s queue */
 	connection_request* req = rlist_pop_front(&socket->listener_s.queue)->request;
 
-
+	/* Creating the socket which will serve the client (Server socket)*/
 	int fid = sys_Socket(socket->port);
 	
 	if(fid == NOFILE)
 	{
+		/* Can’t make a server socket */
 		kernel_broadcast(&(req->connected_cv));
+		/* Time to decrease refcount */
 		socket->refcount--;
 		return NOFILE;
 	}
@@ -156,38 +161,42 @@ Fid_t sys_Accept(Fid_t lsock)
 		return NOFILE;
 	}
 
-
+	/* Get the client socket */
 	socket_cb* peer_client = req->peer;
 	peer_client->type = SOCKET_PEER;
-
+	
+	/* Get the server socket */
 	socket_cb* peer_server = (socket_cb*)fcb2->streamobj;
 	peer_server->type = SOCKET_PEER;
 
-
+	/* Connect client and server sockets */
 	peer_server->peer_s.peer = peer_client;
 	peer_client->peer_s.peer = peer_server;
 
-
+	/* Creating two pipes for sockets connection */
 	pipe_cb* cb1 = (pipe_cb*)xmalloc(sizeof(pipe_cb));
 	pipe_cb* cb2 = (pipe_cb*)xmalloc(sizeof(pipe_cb));
 
-
+	/* Initializing the pipes */
 	initialize_pipe_cb(cb1,peer_client->fcb,peer_server->fcb);
 	initialize_pipe_cb(cb2,peer_server->fcb,peer_client->fcb);
 
+	/* Fixing the write and read pointers between two sockets and two pipes */
 	peer_server->peer_s.write_pipe = cb1;
 	peer_server->peer_s.read_pipe = cb2;
-
 	peer_client->peer_s.read_pipe = cb1;
 	peer_client->peer_s.write_pipe = cb2;
 
+	/* The request has been served */
 	req->admitted = 1;
 	
+	/* Wake up cause of request has been served */
 	kernel_broadcast(&req->connected_cv);
 
-
+	/* Decreasing the refcount of the socket */
 	socket->refcount--;
 
+	/* Deleting the request */
 	free(req);
 
 	return fid;
@@ -197,64 +206,75 @@ Fid_t sys_Accept(Fid_t lsock)
 int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 {	
 
+	/* Check if file id is not legal */
 	if(sock <  0 || sock >= MAX_FILEID)
 		return -1;
 	
 	FCB* fcb = get_fcb(sock);
 
+	/* Check if fcb is not initialized */
 	if(fcb == NULL)
 		return -1;
 
 	socket_cb* socket = (socket_cb*)fcb->streamobj;
-
+	
+	/* Check if socket is not existed */
 	if(socket == NULL)
 		return -1;
 
+	/* Check if socket type is listener */
 	if(socket->type == SOCKET_LISTENER)
 		return -1;	
 
-
+	/* Check if port number is out of bounds */
 	if(port<0 || port>=MAX_PORT)
 		return -1;
 
+	/* Check if the port position in PORT_MAP array does not contain any socket  */
 	if(PORT_MAP[port] == NULL)
 		return -1;
 
+	/* Check if the port position in PORT_MAP array does not match to a listener  */
 	if(PORT_MAP[port]->type != SOCKET_LISTENER)
 		return -1;
 
-
+	/* Increase refcount of the socket we want to connect */
 	socket->refcount++;
 
-
+	/* Creating the request for the listener */
 	connection_request* request = (connection_request*)xmalloc(sizeof(connection_request));
-
+	
+	/* Initializing the request */
 	request->admitted = 0;
 	request->peer = socket;
 	request->connected_cv = COND_INIT;
-
+	
+	/* Sending the request to listener’s queue list */
 	rlnode_init(&request->queue_node,request);
-
 	rlist_push_back(&PORT_MAP[port]->listener_s.queue,&request->queue_node);
 
+	/* Wake up the listener. There is request available to execute */
 	kernel_broadcast(&PORT_MAP[port]->listener_s.req_available);
 
 	int no_timeout = 1;
 	while(request->admitted == 0 && no_timeout)
 	{
+		/* Sleep until request finished the execution or timeout */
 		no_timeout = kernel_timedwait(&request->connected_cv,SCHED_PIPE,timeout);
 	}
 
+	/* Decreasing refcount of the socket we connected previously */
 	socket->refcount--;
 
-
+	/* if I waked up cause of timeout return error */
 	if(no_timeout == 0)
 		return -1;
 
+	/* if I waked up and the request not executed, return error */
 	if(request->admitted == 0)
 		return -1;
 
-	
+	/* All gone well, return success */
 	return 0;
 }
 
