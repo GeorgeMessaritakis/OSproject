@@ -168,9 +168,13 @@ int dummy_read(void *,char*,unsigned int);
  *
  *******************************************/
 
-
+/*
+ * declaration of socket_cb (necessary here so 
+ * peer socket type knows what "socket_cb" is)
+ */
 typedef struct socket_control_block socket_cb;
 
+/*different types of sockets*/
 typedef enum 
 {
 
@@ -180,39 +184,69 @@ typedef enum
 
 }socket_type;
 
+
+/**
+  @brief listener type socket.
+
+  This structure holds all information pertaining to a listener type socket.
+ */
 typedef struct listener
 {
 
-  rlnode queue;
-  CondVar req_available;
+  rlnode queue;           /**< @brief Listener's queue of requests */
+  CondVar req_available;  /**< @brief Condition variable for @c Accept. 
+
+                             This condition variable is  broadcast each time a request is added 
+                             to listener's queue. It is used in the implementation of
+                             @c Accept() */
 
 }listener_socket;
 
+
+/**
+  @brief Unbound type socket.
+
+  This structure holds all information pertaining to an unbound type socket.
+ */
 typedef struct unbound
 {
 
-  rlnode unbound_socket;
+  rlnode unbound_socket;  /**< @brief node to be added to an rlnode list */
 
 }unbound_socket;
 
+
+/**
+  @brief Peer type socket.
+
+  This structure holds all information pertaining to a peer type socket.
+ */
 typedef struct peer
 {
 
-  socket_cb* peer;
-  pipe_cb* write_pipe;
-  pipe_cb* read_pipe;
+  socket_cb* peer;      /**< @brief the socket with which this socket is connected */
+  pipe_cb* write_pipe;  /**< @brief the pipe this socket can write to */
+  pipe_cb* read_pipe;   /**< @brief the pipe this socket can read from  */
 
 }peer_socket;
 
 
+/**
+  @brief Socket Control Block.
+
+  This structure holds all information pertaining to a socket control block.
+ */
 typedef struct socket_control_block
 {
 
-  uint refcount;
-  FCB* fcb;
-  port_t port;
-  socket_type type;
+  uint refcount;      /**< @brief stores the number of references to this socket_cb
+                          if refcount==0 the socket_cb can be deleted  */
+  FCB* fcb;           /**< @brief the fcb associated with this socket  */
+  port_t port;        /**< @brief the port to which we will connect if this socket 
+                            becomes a listener socket  */
+  socket_type type;   /**< @brief the type of the socket  */
 
+ /**< @brief Union to store the addition information needed depending of which type is the socket */
   union{
 
     listener_socket listener_s;
@@ -223,16 +257,27 @@ typedef struct socket_control_block
 
 }socket_cb;
 
+/**
+  @brief Server request.
+
+  This structure holds all information pertaining to a connection
+  made by a client to connect a server.
+ */
 typedef struct request
 {
-  int admitted;
-  socket_cb* peer;
-  CondVar connected_cv;
+  int admitted;           /**< @brief flaq to check if the rewuest has been admitted */
+  socket_cb* peer;        /**< @brief the socket_cb of the client making the request */
+  CondVar connected_cv;   /**< @brief Condition variable for @c Connect. 
 
-  rlnode queue_node;
+                             This condition variable is broadcast each time a request has 
+                             been admitted. It is used in the implementation of
+                             @c Connect() */
+
+  rlnode queue_node;      /**< @brief the node which will be added to server's queue list */
 
 }connection_request;
 
+/*declaration of other useful methods*/
 void initialize_socket(socket_cb* ,FCB* , port_t); 
 int socket_write(void *,const char*,unsigned int);
 int socket_read(void *,char*,unsigned int);
