@@ -23,9 +23,9 @@
 	This project is a property of vasilis samoladas https://github.com/vsamtuc/tinyos3
 
 	Further changes and upgrades will be done for the needs of a project by
-	Messaritakis Georgios
-	Tsanas Kyriakos 
-	Paterakis Konstantinos
+	Messaritakis Georgios  A.M: 2020030116
+	Tsanas Kyriakos 	   A.M: 2020030012
+	Paterakis Konstantinos A.M: 2020030027
 
 */
 

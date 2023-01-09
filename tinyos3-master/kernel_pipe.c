@@ -135,11 +135,11 @@ int pipe_write(void *pipecb_t,const char* buf,unsigned int n)
 
 	/*
 		if the buffer is full and there is a reader
-		available , wait until there is space to write
+		available , wait.
 	*/
 	while(pipecb->elements == PIPE_BUFFER_SIZE  && pipecb->reader != NULL)
 	{
-		//kernel_broadcast(&pipecb->has_data);
+
 		kernel_wait(&pipecb->has_space,SCHED_PIPE);
 	}
 
@@ -256,7 +256,7 @@ int pipe_read(void *pipecb_t,char* buf,unsigned int n)
  * @brief close the write end of the pipe
  * 
  * @param _pipecb the pipe to close
- * @return int 
+ * @return 0 in success , -1 in failure
  */
 int pipe_writer_close(void * _pipecb)
 {
@@ -279,7 +279,7 @@ int pipe_writer_close(void * _pipecb)
 	if(pipecb->reader == NULL)
 		free(pipecb);
 	else
-		kernel_broadcast(&pipecb->has_data);//inform the writers that there are data to write
+		kernel_broadcast(&pipecb->has_data);//inform the readers that there are data to read
 											//in case the writer was created to write once and then get destroyed
 
 	//if everything went smoothly
@@ -292,7 +292,7 @@ int pipe_writer_close(void * _pipecb)
  * @brief close the read end of the pipe
  * 
  * @param _pipecb the pipe control block
- * @return int 
+ * @return 0 in success , -1 in failure
  */
 int pipe_reader_close(void*_pipecb)
 {

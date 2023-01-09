@@ -138,25 +138,34 @@ FCB* get_fcb(Fid_t fid);
 
 typedef struct pipe_control_block
 {
-  FCB* reader;
-  FCB* writer;
+  FCB* reader;                   /**< @brief Read-end of the pipe */
+  FCB* writer;                   /**< @brief Write-end of the pipe */
 
-  CondVar has_space;
-  CondVar has_data;
+  CondVar has_space;             /**< @brief Condition variable for writers. 
 
-  int w_position, r_position;
-  int elements;
+                             This condition variable is  broadcast each time we want to wake up the writers. 
+                             It is used in the implementation of pipe_write
+                              */
+  CondVar has_data;              /**< @brief Condition variable for readers. 
 
-  char buffer[PIPE_BUFFER_SIZE];
+                             This condition variable is  broadcast each time we want to wake up the readers. 
+                             It is used in the implementation of pipe_read
+                              */
+
+  int w_position, r_position;    /**< @brief position of writer and reader in buffer */
+  int elements;                  /**< @brief total characters writen inside pipe's buffer */
+
+  char buffer[PIPE_BUFFER_SIZE]; /**< @brief pipe's buffer */
 } pipe_cb;
 
+/*****************pipe's useful functions*****************/
 void initialize_pipe_cb(pipe_cb*,FCB*,FCB*);
 int pipe_write(void *,const char*,unsigned int);
 int pipe_read(void *,char*,unsigned int);
 int pipe_writer_close(void *);
 int pipe_reader_close(void*);
 
-/*dummy functions*/
+/*****************dummy functions*****************/
 void* pipe_open(unsigned int);
 int dummy_write(void *,const char*,unsigned int);
 int dummy_read(void *,char*,unsigned int);

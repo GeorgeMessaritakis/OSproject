@@ -440,9 +440,9 @@ int procinfo_read(void * procinfo_cb_t,char* buf,unsigned int n)
   //get the process that cursor points to inside PT
   PCB* cur = procinfocb->cursor;
 
-  //cursor should not become NULL
+  //if cursor is NULL we have EOF
   if(cur==NULL)
-    return -1;
+    return 0;
 
   //get the ID of the process
   int pid = get_pid(cur);
@@ -455,19 +455,15 @@ int procinfo_read(void * procinfo_cb_t,char* buf,unsigned int n)
   if(buf == NULL)
     return -1;
 
-  //cannot copy negative number of elements
-  if(n<0)
+  //there is no point copying nothing
+  if(n<1)
     return -1;
 
   //the process info control block can't be NULL,unless we want a segmentation fault :)
   if(procinfocb == NULL)
     return -1;
 
-  //can't work with a NULL PCB
-  if(get_pid(procinfocb->cursor) == NOPROC)
-    return -1;
   
-
   //load the info of the process to procinfocb in order to copy them to buffer
   load_procinfo(procinfocb,cur);
 
@@ -482,7 +478,7 @@ int procinfo_read(void * procinfo_cb_t,char* buf,unsigned int n)
     //if this was the last process of the PT
     if(pid+1 == MAX_PROC)
     {
-      procinfocb->cursor = NULL;   //make the cursor NULL
+      procinfocb->cursor = NULL;   //make the cursor NULL , we have traversed the whole PT
       break;                      //get out of the loop and return
     }
 

@@ -99,6 +99,12 @@ int sys_Listen(Fid_t sock)
 }
 
 
+/**
+ * @brief method for server(listener) to accept requests
+ * 
+ * @param lsock the listener's position in process's FIDT
+ * @return ** Fid_t the position in process' FIDT
+ */
 Fid_t sys_Accept(Fid_t lsock)
 {
 	/* Check if file id is not legal */
@@ -115,7 +121,7 @@ Fid_t sys_Accept(Fid_t lsock)
 	/* Get the listener socket */
 	socket_cb* socket = (socket_cb*)fcb->streamobj;
 
-	/* Check if socket is not existed */
+	/* Check if socket exists*/
 	if(socket == NULL)
 		return NOFILE;
 
@@ -128,13 +134,15 @@ Fid_t sys_Accept(Fid_t lsock)
 
 	while(is_rlist_empty((&socket->listener_s.queue)) && PORT_MAP[socket->port] == socket)
 	{
-		/* Sleep until listener’s queue is not empty and the port position in PORT_MAP array does not exist to a specific socket */
-		kernel_wait(&socket->listener_s.req_available,SCHED_PIPE);
+		/* Sleep until listener’s queue is not empty or the port position in PORT_MAP array does not exist to a specific socket */
+		kernel_wait(&socket->listener_s.req_available,SCHED_IO);
 	}
 
 	/* if I waked up cause of the port position in PORT_MAP array does not exist to a specific socket return no file */
-	if(PORT_MAP[socket->port] != socket)
+	if(PORT_MAP[socket->port] != socket){
+		socket->refcount--;
 		return NOFILE;
+	}
 
 	/* Taking the request from listener’s queue */
 	connection_request* req = rlist_pop_front(&socket->listener_s.queue)->request;
@@ -196,13 +204,19 @@ Fid_t sys_Accept(Fid_t lsock)
 	/* Decreasing the refcount of the socket */
 	socket->refcount--;
 
-	/* Deleting the request */
-	free(req);
 
 	return fid;
 }
 
 
+/**
+ * @brief function for client to connect to server
+ * 
+ * @param sock the position in socket's process FIDT
+ * @param port server's port to connect to
+ * @param timeout max time for client to wait for request accept
+ * @return int 0 in success , -1 in failure
+ */
 int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 {	
 
@@ -218,7 +232,7 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 
 	socket_cb* socket = (socket_cb*)fcb->streamobj;
 	
-	/* Check if socket is not existed */
+	/* Check if socket exists */
 	if(socket == NULL)
 		return -1;
 
@@ -260,7 +274,7 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 	while(request->admitted == 0 && no_timeout)
 	{
 		/* Sleep until request finished the execution or timeout */
-		no_timeout = kernel_timedwait(&request->connected_cv,SCHED_PIPE,timeout);
+		no_timeout = kernel_timedwait(&request->connected_cv,SCHED_IO,timeout);
 	}
 
 	/* Decreasing refcount of the socket we connected previously */
@@ -273,6 +287,9 @@ int sys_Connect(Fid_t sock, port_t port, timeout_t timeout)
 	/* if I waked up and the request not executed, return error */
 	if(request->admitted == 0)
 		return -1;
+
+	/* Deleting the request */
+	free(request);
 
 	/* All gone well, return success */
 	return 0;
@@ -321,16 +338,13 @@ int sys_ShutDown(Fid_t sock, shutdown_mode how)
 			pipe_reader_close(socket->peer_s.read_pipe);
 			pipe_writer_close(socket->peer_s.write_pipe);
 			socket->peer_s.read_pipe = NULL;
-			socket->peer_s.write_pipe = NULL;
+			socket->peer_s.write_pipe = NULL;	
 		break;
 
 	default:																						// if the cause is different
 		return -1;																				// return error
 		break;
 	}
-
-	if(socket->refcount == 0)		// if there is no one who needs this socket
-		free(socket);							// delete it
 
 
 	return 0;	// shutdown was successful!
@@ -397,7 +411,7 @@ int socket_read(void *socketcb_t,char* buf,unsigned int n)
  * @brief close the socket
  * 
  * @param _pipecb the socket to close
- * @return 				0 on success, -1 on failure
+ * @return 	0 on success, -1 on failure
  */
 int socket_close(void * _socketcb)
 {
@@ -415,8 +429,8 @@ int socket_close(void * _socketcb)
        rlnode* node = rlist_pop_front(&(socketcb->listener_s.queue));
        free(node->request);
     }
+	PORT_MAP[socketcb->port] = NULL;																			// remove the socket from the port table
     kernel_broadcast(&(socketcb->listener_s.req_available));							// notify anyone who waits for a request to come
-    PORT_MAP[socketcb->port] = NULL;																			// remove the socket from the port table
 	}
 
 	if(socketcb->type == SOCKET_PEER)											// if socket is peer type
